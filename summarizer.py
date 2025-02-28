@@ -54,7 +54,12 @@ def getSummary(chunk: str):
         ],
     )
 
-    result = completion.choices[0].message.content.strip("\n")
+    result = (
+        completion.choices[0]
+        .message.content.strip("\n")
+        .strip(" ")
+        .replace("\n\n", "\n")
+    )
 
     with open("summary.txt", "a+", encoding="utf-8") as wf:
         wf.write(result + "\n")
