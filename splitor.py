@@ -9,6 +9,7 @@ import filetype
 import numpy as np
 import torch
 from loguru import logger
+from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
 
@@ -210,9 +211,10 @@ class Splitor:
         overlapSize = 200  # 重叠部分大小
         similarityThreshold = 0.9  # 相似度阈值
 
-        for eachPath in self.__tempFilePaths:
+        for eachPath in tqdm(self.__tempFilePaths, desc="Processing files"):
             with open(eachPath, "r", encoding="utf-8") as f:
-                for eachline in f.readlines():
+                lines = f.readlines()
+                for eachline in tqdm(lines, leave=False):
                     if not lastLine:
                         lastLine = eachline
                         chunk += eachline
@@ -246,9 +248,8 @@ class Splitor:
             chunk (str): Chunk content.
         """
         chunk = chunk.strip("\n").strip(" ")
-        logger.info(f"\n<chunk>\n{chunk}</chunk>\nChunk Size: {len(chunk)}")
         with open(self.__outputPath, "a+", encoding="utf-8") as wf:
-            wf.write(f"<chunk>\n{chunk}</chunk>\n")
+            wf.write(f"<chunk>\n{chunk}\n</chunk>\n")
 
         self.__chunkCount += 1
 
