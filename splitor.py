@@ -239,6 +239,8 @@ class Splitor:
             # 删除缓存文件
             os.remove(eachPath)
 
+        self.__tempFilePaths.clear()
+
         logger.success(f"splited {self.__chunkCount} chunks")
 
     def __saveChunk(self, chunk: str) -> None:
@@ -302,6 +304,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     splitor = Splitor(args.data_path, args.max_workers, args.output_path)
-    splitor.run()
-    splitor.run()
     splitor.run()
