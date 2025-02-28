@@ -54,9 +54,6 @@ class Splitor:
         # 文件切片
         self.__splitText()
 
-        # 清理缓存文件
-        self.__cleanTemp()
-
     def __scanPath(self, dataPath: str) -> None:
         """Recursively scans the given path and collects file paths.
 
@@ -237,6 +234,9 @@ class Splitor:
                 if chunk:
                     self.__saveChunk(chunk)
 
+            # 删除缓存文件
+            os.remove(eachPath)
+
         logger.success(f"splited {self.__chunkCount} chunks")
 
     def __saveChunk(self, chunk: str) -> None:
@@ -251,13 +251,6 @@ class Splitor:
             wf.write(f"<chunk>\n{chunk}</chunk>\n")
 
         self.__chunkCount += 1
-
-    def __cleanTemp(self) -> None:
-        """Remove temp file."""
-        logger.info("Cleaning temp file")
-
-        for each in self.__tempFilePaths:
-            os.remove(each)
 
     def calc_simimarity(self, s1: str, s2: str):
         """Calculate text simimarity.
