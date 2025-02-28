@@ -6,7 +6,10 @@ from hashlib import md5
 
 import docx
 import filetype
+import numpy as np
+import torch
 from loguru import logger
+from transformers import BertModel, BertTokenizer
 
 
 class Splitor:
@@ -27,17 +30,27 @@ class Splitor:
         self.__outputPath: str = outputPath
         self.__fileInfos: list[tuple[str, str]] = []
         self.__tempFilePaths: list[str] = []
+        self.__model: BertModel = None
+        self.__tokenizer: BertTokenizer = None
 
-    def run(self):
+    def run(self) -> None:
         """Starts the file processing workflow."""
         # 建立临时目录，存放缓存数据
         if not os.path.exists("temp"):
             os.mkdir("temp")
 
+        # 扫描目录文件
         self.__scanPath(self.__dataPath)
         if len(self.__fileInfos) > 0:
             self.__parseFiles()
 
+        # 加载相似度模型
+        self.__loadModel()
+
+        # 文件切片
+        self.__splitText()
+
+        # 清理缓存文件
         self.__cleanTemp()
 
     def __scanPath(self, dataPath: str) -> None:
@@ -128,6 +141,7 @@ class Splitor:
             Expection: Can not parse the docx file.
         """
         logger.info(f"Parsing docx file: {filePath}")
+
         tempPath = os.path.join(
             "temp",
             md5(f"{time.time()}-{filePath}".encode("utf-8")).hexdigest() + ".txt",
@@ -156,6 +170,7 @@ class Splitor:
             str: Path to the generated text file.
         """
         logger.info(f"Parsing txt file: {filePath}")
+
         tempPath = os.path.join(
             "temp",
             md5(f"{time.time()}-{filePath}".encode("utf-8")).hexdigest() + ".txt",
@@ -171,11 +186,89 @@ class Splitor:
 
         return tempPath
 
-    def __cleanTemp(self):
+    def __loadModel(self) -> None:
+        """Load model from huggingface."""
+        logger.info("Loading bert-base-chinese model...")
+
+        self.__tokenizer = BertTokenizer.from_pretrained(
+            "bert-base-chinese", cache_dir="models"
+        )
+        self.__model = BertModel.from_pretrained(
+            "bert-base-chinese", cache_dir="models"
+        )
+
+    def __splitText(self) -> None:
+        """Split text via simimarity."""
+        assert self.__tokenizer != None, "tokenizer is None"
+        assert self.__model != None, "model is None"
+
+        chunk = ""
+        lastLine = ""
+        context = ""
+        chunkSize = 512  # 最小块大小
+        overlapSize = 200  # 重叠部分大小
+        similarityThreshold = 0.9  # 相似度阈值
+
+        for eachPath in self.__tempFilePaths:
+            with open(eachPath, "r", encoding="utf-8") as f:
+                for eachline in f.readlines():
+                    if not lastLine:
+                        lastLine = eachline
+                        chunk += eachline
+                        continue
+
+                    # 计算相似度
+                    similarity = self.calc_simimarity(lastLine, eachline)
+
+                    # 如果相似度高或者当前块长度不够512，则继续追加
+                    if similarity >= similarityThreshold or len(chunk) < chunkSize:
+                        chunk += eachline
+                    else:
+                        self.__saveChunk(chunk)
+                        chunk = chunk[-overlapSize:] + eachline  # 重新开始新的块
+
+                    lastLine = eachline
+
+                # 处理文件最后的剩余部分
+                if chunk:
+                    self.__saveChunk(chunk)
+
+    def __saveChunk(self, chunk: str) -> None:
+        """Save chunk to file.
+
+        Args:
+            chunk (str): Chunk content.
+        """
+        logger.info(f"\n<chunk>\n{chunk}</chunk>")
+        with open(self.__outputPath, "a+", encoding="utf-8") as wf:
+            wf.write(f"<chunk>\n{chunk}</chunk>\n")
+
+    def __cleanTemp(self) -> None:
         """Remove temp file."""
         logger.info("Cleaning temp file")
+
         for each in self.__tempFilePaths:
             os.remove(each)
+
+    def calc_simimarity(self, s1: str, s2: str):
+        """Calculate text simimarity.
+
+        Args:
+            s1 (str): Given text 1.
+            s2 (str): Given text 2.
+        """
+        inputs = self.__tokenizer(
+            [s1, s2], return_tensors="pt", padding=True, truncation=True
+        )
+
+        with torch.no_grad():
+            outputs = self.__model(**inputs)
+            embeddings = outputs.last_hidden_state[:, 0, :].cpu().numpy()
+
+        sim = np.dot(embeddings[0], embeddings[1]) / (
+            np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])
+        )
+        return sim
 
 
 if __name__ == "__main__":
@@ -206,4 +299,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     splitor = Splitor(args.data_path, args.max_workers, args.output_path)
+    splitor.run()
+    splitor.run()
     splitor.run()
