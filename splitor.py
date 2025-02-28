@@ -1,11 +1,11 @@
-import time
-import os
-import sys
-import docx
 import argparse
 import concurrent.futures
-import filetype
+import os
+import time
 from hashlib import md5
+
+import docx
+import filetype
 from loguru import logger
 
 
@@ -37,7 +37,7 @@ class Splitor:
         self.__scanPath(self.__dataPath)
         if len(self.__fileInfos) > 0:
             self.__parseFiles()
-        
+
         self.__cleanTemp()
 
     def __scanPath(self, dataPath: str) -> None:
@@ -167,13 +167,12 @@ class Splitor:
                 eachline = eachline.strip("\n").strip(" ")
                 if eachline == "":
                     continue
-                wf.write(eachline+"\n")
+                wf.write(eachline + "\n")
 
         return tempPath
 
     def __cleanTemp(self):
-        """Remove temp file.
-        """
+        """Remove temp file."""
         logger.info("Cleaning temp file")
         for each in self.__tempFilePaths:
             os.remove(each)

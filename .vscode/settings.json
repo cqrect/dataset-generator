@@ -1,0 +1,12 @@
+{
+    "[python]": {
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 80,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "isort.args": ["--profile", "black"]
+}
