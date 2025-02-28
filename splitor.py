@@ -32,12 +32,16 @@ class Splitor:
         self.__tempFilePaths: list[str] = []
         self.__model: BertModel = None
         self.__tokenizer: BertTokenizer = None
+        self.__chunkCount: int = 0
 
     def run(self) -> None:
         """Starts the file processing workflow."""
         # 建立临时目录，存放缓存数据
         if not os.path.exists("temp"):
             os.mkdir("temp")
+
+        # 覆盖输出文件
+        open(self.__outputPath, "w+", encoding="utf-8").close()
 
         # 扫描目录文件
         self.__scanPath(self.__dataPath)
@@ -233,15 +237,20 @@ class Splitor:
                 if chunk:
                     self.__saveChunk(chunk)
 
+        logger.success(f"splited {self.__chunkCount} chunks")
+
     def __saveChunk(self, chunk: str) -> None:
         """Save chunk to file.
 
         Args:
             chunk (str): Chunk content.
         """
-        logger.info(f"\n<chunk>\n{chunk}</chunk>")
+        chunk = chunk.strip("\n").strip(" ")
+        logger.info(f"\n<chunk>\n{chunk}</chunk>\nChunk Size: {len(chunk)}")
         with open(self.__outputPath, "a+", encoding="utf-8") as wf:
             wf.write(f"<chunk>\n{chunk}</chunk>\n")
+
+        self.__chunkCount += 1
 
     def __cleanTemp(self) -> None:
         """Remove temp file."""
