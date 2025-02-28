@@ -174,3 +174,5 @@ test
 temp
 test.py
 models
+output.txt
+.env
